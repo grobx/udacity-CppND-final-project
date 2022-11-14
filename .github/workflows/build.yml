@@ -1,0 +1,133 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+#    build-macos:
+#        runs-on: macos-12
+
+#        steps:
+#        - name: Checkout
+#          uses: actions/checkout@v3
+
+#        - name: Bootstrap
+#          run: sh ${{github.workspace}}/bootstrap.sh
+
+#        - name: Configure CMake
+#          run: |
+#            export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig"
+#            cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+#        - name: Build
+#          run: |
+#            cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    build-ubuntu-22-04:
+        runs-on: ubuntu-22.04
+
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+
+        - name: Bootstrap
+          run: sh ${{github.workspace}}/bootstrap.sh
+
+        - name: Configure CMake
+          run: |
+            export PKG_CONFIG_PATH="/usr/local/opt/libressl/lib/pkgconfig"
+            cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+        - name: Build
+          run: |
+            cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    build-ubuntu-22-10:
+        runs-on: ubuntu-22.04
+
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+
+        - name: Install packages, Configure CMake and Build
+          uses: addnab/docker-run-action@v3
+          with:
+            image: ubuntu:22.10
+            options: -v /home/runner/work:/home/runner/work
+            run: |
+                cd ${{github.workspace}}
+                sh ./bootstrap.sh
+                useradd -m -u 1001 runner
+                su - runner
+                cd ${{github.workspace}}
+                cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+                cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    build-archlinux:
+        runs-on: ubuntu-22.04
+
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+
+        - name: Install packages, Configure CMake and Build
+          uses: addnab/docker-run-action@v3
+          with:
+            image: archlinux:latest
+            options: -v /home/runner/work:/home/runner/work
+            run: |
+                cd ${{github.workspace}}
+                sh ./bootstrap.sh
+                useradd -m -u 1001 runner
+                su - runner
+                cd ${{github.workspace}}
+                export PKG_CONFIG_PATH="/usr/lib/libressl/pkgconfig"
+                cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+                cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+#                ~/
+#            key: ${{ runner.os }}-guix
+
+
+
+
+
+#    - name: Setup guix
+#        sudo systemctl start guix-daemon
+#        guix --version
+#        guix pull 2>&1 > /dev/null
+#        guix shell bash -- bash
+#        whereis bash
+#        sudo sed -i 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
+#        sudo apt-get -y update
+#        sudo apt-get -y upgrade
+#        sudo apt-get -y dist-upgrade
+#        sudo do-release-upgrade -c
+#        echo "y" | sudo do-release-upgrade -f DistUpgradeViewNonInteractive
+#        lsb_release -a
+
+#    - name: Install packages
+#      run: |
+#        sudo apt-get -y install libssl-dev libboost-dev libboost-system-dev pkgconf libgtkmm-4.0-dev
+#        apt-cache show pkgconf
+
+#    - name: Configure CMake
+#      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+#      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+#      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+#    - name: Build
+#      # Build your program with the given configuration
+#      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+#     - name: Test
+#       working-directory: ${{github.workspace}}/build
+#       # Execute tests defined by the CMake configuration.
+#       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#       run: ctest -C ${{env.BUILD_TYPE}}
