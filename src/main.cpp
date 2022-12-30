@@ -5,8 +5,17 @@
  */
 #include "app.hpp"
 
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
+
+namespace logging = boost::log;
+
 int main (int argc, char* argv[])
 {
+    logging::core::get()->set_filter
+    (
+        logging::trivial::severity >= logging::trivial::severity_level::trace
+    );
     const Glib::ustring app_id =
             "dev.roberti.udacity.cppnd.final-project";
     const Glib::ustring title = "Dictionary";
