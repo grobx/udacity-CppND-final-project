@@ -144,7 +144,11 @@ private:
 
         m_search.signal_term_selected().connect(
                     [this](const Glib::VariantBase& parameter){
-            define(Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring>>(parameter).get());
+            using namespace Glib;
+            ustring text =
+                    VariantBase::cast_dynamic<Variant<ustring>>(parameter).get();
+            m_search.set_text(text);
+            define(text);
         });
     }
 
