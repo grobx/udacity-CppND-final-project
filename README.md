@@ -12,16 +12,18 @@ The application is a simple Dictionary that uses the JSON API from [Merriam-Webs
 
 Start the application, write the word you want to find in the header bar search entry, press enter and wait the response from the Merrian-Webster online service that will appear in the central widget of the application window.
 
+In case a term is not found and the service can provide some suggestions, a drop-down menu is shown, and the user can select the term if it match his/her expectations.
+
 ## Organization
 
 ### include/app.hpp
 
 This file define the namespace `app` with the following classes:
 
-- Window <- Gtk::ApplicationWindow
-- Layout <- Gtk::Box
-- Search <- Gtk::SearchEntry
-- ResultView <- Gtk::Label
+- Window : public Gtk::ApplicationWindow
+- Layout : public Gtk::Box
+- Search : public Gtk::SearchEntry
+- ResultView : public Gtk::Label 
 
 And the following output stream operators:
 
@@ -30,13 +32,13 @@ And the following output stream operators:
 - std::ostream& operator<< (std::ostream& out, dict::def const& d)
 - std::ostream& operator<< (std::ostream& out, dict::sense const& s)
 
-The classes are used to create the user interface, while the stream operators are the one that produces the "pango markup" used to render the `ResultView`.
+The classes are used to create the user interface, while the stream operators produces the "pango markup" used to render the `ResultView` (ie: a `Gtk::Label` able to render "pango markup").
 
 #### class Window : public Gtk::ApplicationWindow
 
 ##### Window (Glib::ustring title, int width, int height)
 
-The `Window` is constructed by using passing a `title`, a `width` and an `height`. During the constructor, an instance of the `Layout` is used as a child widget and a signal for `Gtk::Window::close-request` is attached to the `app::Window::shutdown`.
+The `Window` is constructed by passing a `title`, a `width` and an `height`. During the constructor, an instance of the `Layout` is used as a child widget and a signal for `Gtk::Window::close-request` is attached to the `app::Window::shutdown`.
 
 ##### bool shutdown ()
 
@@ -46,28 +48,48 @@ The `shutdown` member function ask the `Gio::Application` to `quit` so that ever
 
 The `Layout` is a vertical `Gtk::Box` that contains an `Gtk::HeaderBar` on the head, an expanded `Gtk::Stack` with a `Gtk::ScrolledWindow` that forms the central widget where the `ResultView` will be rendered, and a `Gtk::Statusbar` on the bottom.
 
-##### Layout ()
 
-You don't need to pass anything to construct a `Layout`. During construction, it setup a `dict::api` class by passing the content of the `DICTIONARY_API_KEY` environment variable then setup the header, central and bottom widgets and finally it initialize the signals by calling `init_signals`.
+##### Layout (Gtk::Window& window)
+
+To construct a `Layout` you need to pass a `Gtk::Window` that is used to render a `Gtk::MessageDialog` in case an exception is thrown during the search for a term. The constructor setup a `dict::api` class by passing the content of the `DICTIONARY_API_KEY` environment variable then setup the header, central and bottom widgets and finally it initialize the signals by calling `init_signals`.
 
 ##### void init_signals ()
 
-The `init_signals` member function is used to setup all the signal handlers that are needed for the application to function as expected. In particular, there are three signals that we are using. The `Layout::realize` signal is attached to a lambda function that will render the message "Application Started!" for 2.5 seconds before deleting it. The `Search::search-changed` is attached to a lambda function that extract the `term` using `Search::get_text` and call `define(term`. The `Search::term-selected` signal is attached to a lambda function that receive the `term` as a parameter and call `define(term)`.
+The `init_signals` member function is used to setup all the signal handlers that are needed for the application to function as expected. In particular, there are three signals that we are using. The `Layout::realize` signal is attached to a lambda function that will render the message "Application Started!" for 2.5 seconds before deleting it. The `Search::activate` is attached to a lambda function that extract the `term` using `Search::get_text` and call `define(term)` in order to perform the lookup in the dictionary. The `Search::term-selected` signal is attached to a lambda function that receive the `term` as a parameter and call `define(term)`. This last signal is the one that handle the term selection from a suggestion drop-down menu.
 
-##### void define(Glib::ustring const& term)
+##### void define (Glib::ustring const& term)
 
-The `define` member funciton try to request 
+The `define` member funciton start a thread to perform the lookup of the `term` passed as parameter. If anything is found, the result will be shown in the central widget; otherwise, if the service will respond with some suggestions, those terms are shown in a drop-down menu.
+
+If anything goes wrong (like we are not able to parse the response, or to contact the service) a message dialog will be shown.
 
 #### class Search : public Gtk::SerachEntry
+
+##### Search ()
+
+During construction, a `Search` will construct a `Gio::Menu` and a `Gio::SimpleAction` objects that are used to show the drop-down menu and to handle the user click on one of the suggestions, if any.
+
+##### Glib::SignalProxy<void(const Glib::VariantBase&)> signal_term_selected ()
+
+This is a simple proxy that expose the signal `activate` of the member `m_action`. This signal is fired when a drop-down menu entry is clicked by the user, and is the one used in `Layout::init_signal` to connect the handler for this kind of user action.
+
+##### void set_suggestions (dict::suggestions const& suggestions)
+
+This method is called during a `Layout::define` if the result thread will raise a `dict::suggestions` exception. This way a drop-down menu is shown with term suggestions.
+
 #### class ResultView : public Gtk::Label
+
+##### void set_result (dict::result const& res)
+
+This function will render the `res` to a string by using a `std::ostringstream` and set the result as "pango markup" by calling `set_markup` on itself.
 
 ### include/dict.hpp
 
 This file define the namespace `dict` with the following classes:
 
 - api
+- suggestions : public std::exception, public std::vector\<std::string\>
 - result
-- suggestions
 - entry
 - def
 - sense
@@ -76,11 +98,11 @@ The `api` class is used to send requests to the Merrian-Webster online service. 
 
 This class contains a single member function `result request (std::string word)` that given a `word` either return a `result` object or throws a `suggestions` exception.
 
-You can construct one object of the other classes (`result`, `suggestions`, `entry`, `def` and `sens`) by passing a `json::value` by reference that contains a valid structure for that object.
+You can construct one object of the other classes (`result`, `suggestions`, `entry`, `def` and `sens`) by passing a `json::value` by reference that contains a valid structure for that kind of object.
 
 ### include/json_body.hpp
 
-This file is taken from Boost json library example and is used to get the body of the HTTP response as JSON data. It contains the class `json_body` that is made by a `writer` and a `reader`. Only the `reader` is used by this application.
+This file was taken from Boost json library example and is used to get the body of the HTTP response as JSON data. It contains the struct `json_body` that is made by a `writer` struct and a `reader` struct. Only the `reader` is used by this application.
 
 ## Dependencies for Building
 
@@ -274,7 +296,7 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 - [ ] meet all addressed requirements
 - [x] add debug logs
 - [ ] improve exception handling
-- [ ] check that you can build and run this app on Arch Linux and Windows
+- [x] check that you can build and run this app on Ubuntu
 
 ## Rubric Requirments
 
@@ -285,8 +307,8 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 - [x] The README.md is included with the project and has instructions for building/running the project.
 - [x] If any additional libraries are needed to run the project, these are indicated with cross-platform installation instructions.
 - [x] The README describes the project you have built.
-- [ ] The README also indicates the file and class structure, along with the expected behavior or output of the program.
 - [ ] The README indicates which rubric points are addressed. The README also indicates where in the code (i.e. files and line numbers) that the rubric points are addressed.
+- [x] The README also indicates the file and class structure, along with the expected behavior or output of the program.
 
 #### Compiling and Testing
 
