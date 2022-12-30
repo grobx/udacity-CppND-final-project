@@ -312,28 +312,30 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 
 #### Compiling and Testing
 
-- [ ] The project code must compile and run without errors. 
+- [x] The project code must compile and run without errors. 
 
-### Choosed
+### Addressed
 
 #### Loops, Functions, I/O
 
-- [ ] A variety of control structures are used in the project.
+- [x] The project accepts input from a user as part of the necessary operation of the program.
+  - a `Gtk::SearchEntry` (namely [app::Search](app.hpp#L60)) is used by the user to input the term to lookup
 
 #### Object Oriented Programming
 
 - [ ] The project code is organized into classes with class attributes to hold the data, and class methods to perform tasks.
-- [ ] All class data members are explicitly specified as public, protected, or private.
-- [ ] All class members that are set to argument values are initialized through member initialization lists.
-- [ ] All class member functions document their effects, either through function names, comments, or formal documentation. Member functions do not change program state in undocumented ways.
-- [ ] Appropriate data and functions are grouped into classes. Member data that is subject to an invariant is hidden from the user. State is accessed via member functions.
-- [ ] One function is declared with a template that allows it to accept a generic parameter.
+  - [dict::sense](include/dict.hpp#L42)
+  - [dict::def](include/dict.hpp#L52)
+  - [ ] TODO: add all the others from dict.hpp and app.hpp
+
+- [?] Appropriate data and functions are grouped into classes. Member data that is subject to an invariant is hidden from the user. State is accessed via member functions.
 
 #### Memory Management
 
 - [ ] At least two variables are defined as references, or two functions use pass-by-reference in the project code.
-- [ ] The project uses at least one smart pointer: unique_ptr, shared_ptr, or weak_ptr. The project does not use raw pointers.
+  - 
 
 #### Concurrency
 
-- [ ] The project uses multiple threads in the execution.
+- [ ] A promise and future is used to pass data from a worker thread to a parent thread in the project code.
+  - 
