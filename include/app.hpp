@@ -61,26 +61,15 @@ private:
     Glib::RefPtr<Gio::SimpleAction> m_action;
     Gtk::PopoverMenu m_popover;
 
-#if !GTK_CHECK_VERSION(4,8,0)
-    unsigned int m_search_delay_ms;
-    sigc::connection m_search_delay_changed_con, m_search_delay_con;
-    bool m_search_delay_expired;
-#endif
-
 public:
     Search():
         m_menu(Gio::Menu::create())
       , m_action(Gio::SimpleAction::create("define", Glib::VariantType("s")))
-#if !GTK_CHECK_VERSION(4,8,0)
-      , m_search_delay_ms(0) , m_search_delay_expired(false)
-#endif
     {
         Gtk::Application::get_default()->add_action(m_action);
 
         m_popover.set_menu_model(m_menu);
         m_popover.set_parent(*this);
-
-        set_search_delay(500);
     }
 
     auto signal_term_selected () {
@@ -94,36 +83,6 @@ public:
         }
         m_popover.popup();
     }
-
-#if !GTK_CHECK_VERSION(4,8,0)
-    void set_search_delay (unsigned int delay) {
-        m_search_delay_ms = delay;
-        connect_search_delay_handler();
-    }
-
-private:
-    void connect_search_delay_handler () {
-        if (m_search_delay_changed_con.connected()) {
-            m_search_delay_changed_con.disconnect();
-        }
-        m_search_delay_changed_con = signal_search_changed().connect([this]{
-            if (m_search_delay_con.connected()) {
-                if (!m_search_delay_expired) {
-                    m_search_delay_con.disconnect();
-                } else {
-                    m_search_delay_expired = false;
-                    return;
-                }
-            }
-            signal_search_changed().emission_stop();
-            m_search_delay_con = Glib::signal_timeout().connect([this]{
-                m_search_delay_expired = true;
-                g_signal_emit_by_name(gobj(), "search-changed");
-                return false;
-            }, m_search_delay_ms);
-        }, false);
-    }
-#endif
 };
 
 class Layout : public Gtk::Box {
@@ -179,7 +138,7 @@ private:
             }, 2500);
         });
 
-        m_search.signal_search_changed().connect([this]{
+        m_search.signal_activate().connect([this]{
             define(m_search.get_text());
         });
 

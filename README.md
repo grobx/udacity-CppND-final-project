@@ -10,7 +10,7 @@ The application is a simple Dictionary that uses the JSON API from [Merriam-Webs
 
 ## How to use it
 
-Start the application, write the word you want to find in the header bar search entry, and wait the response from the Merrian-Webster online service that will appear in the central widget of the application window.
+Start the application, write the word you want to find in the header bar search entry, press enter and wait the response from the Merrian-Webster online service that will appear in the central widget of the application window.
 
 ## Organization
 
