@@ -228,6 +228,6 @@ protected:
     }
 };
 
-}
+} // namespace app
 
 #endif // APP_HPP

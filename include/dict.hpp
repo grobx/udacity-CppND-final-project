@@ -200,6 +200,6 @@ public:
     }
 };
 
-}
+} // namespace dict
 
 #endif // DICT_HPP
