@@ -167,10 +167,25 @@ private:
 
         auto msg_id = m_status.push("Searching " + term + " ...");
 
-        auto ftr = std::async(std::launch::async,
-                              std::bind(&dict::api::request, &m_api, term));
         BOOST_LOG_TRIVIAL(trace)
                 << "Starting search for term <" << term << ">";
+
+        std::promise<dict::result> prm;
+        std::future<dict::result> ftr = prm.get_future();
+        std::thread([this, term](std::promise<dict::result>&& prm){
+            BOOST_LOG_TRIVIAL(trace)
+                    << "Search for term <" << term << "> started";
+            try {
+                dict::result result = m_api.request(term);
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Search for term <" << term << "> finished";
+                prm.set_value(result);
+            } catch (...) {
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Search for term <" << term << "> throws";
+                prm.set_exception(std::current_exception());
+            }
+        }, std::move(prm)).detach();
 
         Glib::signal_timeout().connect([this, msg_id, term, ftr = ftr.share()]{
             using namespace std::chrono_literals;
