@@ -41,12 +41,12 @@ void throw_invalid_kind(std::string const& expected, json::kind actual) {
 
 class sense {
 private:
-    json::object m_sense;
+    json::object const& m_sense;
 
 public:
-    sense (json::value const& sense) {
-        m_sense = sense.as_object();
-    }
+    sense (json::value const& sense):
+        m_sense(sense.as_object())
+    {}
 };
 
 class def {
@@ -75,12 +75,13 @@ public:
 
 class entry {
 private:
+    json::object const& m_entry;
     std::optional<std::vector<def>> m_def;
 
 public:
-    entry (json::value const& entry) {
-        if (!entry.is_object()) {
-            throw_invalid_kind("object", entry.kind());
+    entry (json::value const& entry):
+        m_entry(entry.as_object())
+    {
         }
 
         json::object const& entry_obj = entry.get_object();
@@ -111,10 +112,13 @@ public:
 
 class result {
 private:
+    json::array const& m_result;
     std::vector<entry> m_entries;
 
 public:
-    result (json::value const& result) {
+    result (json::value const& result):
+        m_result(result.as_array())
+    {
         if (!result.is_array()) {
             throw_invalid_kind("array", result.kind());
         }

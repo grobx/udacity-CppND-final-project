@@ -80,7 +80,7 @@ public:
         return m_action->signal_activate();
     }
 
-    auto set_suggestions (const dict::suggestions & suggestions) {
+    void set_suggestions (dict::suggestions const& suggestions) {
         m_menu->remove_all();
         for (auto & s : suggestions) {
           m_menu->append(s, "app.define::" + s);
@@ -173,7 +173,9 @@ private:
                 << "Starting search for term <" << term << ">";
 
         Glib::signal_timeout().connect([this, msg_id, term, ftr = ftr.share()]{
-            if (ftr.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
+            using namespace std::chrono_literals;
+
+            if (ftr.wait_for(1ms) != std::future_status::ready)
                 return true;
 
             try {
