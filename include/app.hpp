@@ -8,11 +8,15 @@
 
 #include "dict.hpp"
 
+#include <boost/log/trivial.hpp>
+
 #include <gtkmm.h>
 
 #include <ostream>
 #include <future>
 #include <thread>
+
+namespace logging = boost::log;
 
 namespace app {
 
@@ -131,20 +135,26 @@ public:
 private:
     void init_signals () {
         signal_realize().connect([this]{
+            BOOST_LOG_TRIVIAL(trace) << "Application Started!";
             auto msg_id = m_status.push("Application Started!");
-
             Glib::signal_timeout().connect_once([this, msg_id]{
                 m_status.remove_message(msg_id);
             }, 2500);
         });
 
         m_search.signal_activate().connect([this]{
+            BOOST_LOG_TRIVIAL(trace)
+                    << "User entered search term <"
+                    << m_search.get_text() << ">";
             define(m_search.get_text());
         });
 
         m_search.signal_term_selected().connect(
                     [this](const Glib::VariantBase& parameter){
             using namespace Glib;
+            BOOST_LOG_TRIVIAL(trace)
+                    << "User selected search term <"
+                    << m_search.get_text() << ">";
             ustring text =
                     VariantBase::cast_dynamic<Variant<ustring>>(parameter).get();
             m_search.set_text(text);
@@ -159,6 +169,8 @@ private:
 
         auto ftr = std::async(std::launch::async,
                               std::bind(&dict::api::request, &m_api, term));
+        BOOST_LOG_TRIVIAL(trace)
+                << "Starting search for term <" << term << ">";
 
         Glib::signal_timeout().connect([this, msg_id, term, ftr = ftr.share()]{
             if (ftr.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
@@ -219,10 +231,12 @@ public:
         set_child(m_layout);
         signal_close_request().connect(
                     sigc::mem_fun(*this, &Window::shutdown), false);
+        BOOST_LOG_TRIVIAL(trace) << "Application Created!";
     }
 
 protected:
     bool shutdown () {
+        BOOST_LOG_TRIVIAL(trace) << "Application Shutdown!";
         Gtk::Application::get_default()->quit();
         return true;
     }

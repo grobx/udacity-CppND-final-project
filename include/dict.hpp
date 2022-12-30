@@ -12,6 +12,7 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
 #include <boost/json.hpp>
+#include <boost/log/trivial.hpp>
 
 #include <unordered_map>
 #include <algorithm>
@@ -154,6 +155,9 @@ public:
     auto request (std::string word) {
         // creating client socket
 
+        BOOST_LOG_TRIVIAL(trace)
+                << "Request term <" << word << ">";
+
         ssl::stream<tcp::socket> m_ssl_sock
                 (m_io_context, m_ssl_context);
         m_ssl_sock.set_verify_mode(ssl::verify_peer);
@@ -165,14 +169,26 @@ public:
         ip::basic_resolver_results<tcp> m_resolver_results =
                 m_resolver.resolve(m_host.c_str(), m_port.c_str());
 
+        BOOST_LOG_TRIVIAL(trace)
+                << "Host:service resolved to "
+                << m_resolver_results->host_name() << ":"
+                << m_resolver_results->service_name();
+
         // connecting
 
         tcp::endpoint m_endpoint =
                 asio::connect(m_ssl_sock.lowest_layer(), m_resolver_results);
 
+        BOOST_LOG_TRIVIAL(trace)
+                << "Connected to endpoint "
+                << m_endpoint.address() << ":"
+                << m_endpoint.port();
+
         // ssl handshake
 
         m_ssl_sock.handshake(asio::ssl::stream_base::client);
+
+        BOOST_LOG_TRIVIAL(trace) << "Handshake done!";
 
         // creating request
 
@@ -186,11 +202,15 @@ public:
 
         std::size_t sent = http::write(m_ssl_sock, req);
 
+        BOOST_LOG_TRIVIAL(trace) << "Wrote " << sent << " bytes";
+
         // read reply
 
         beast::flat_buffer buffer;
         http::response<json_body> res{};
         std::size_t read = http::read(m_ssl_sock, buffer, res);
+
+        BOOST_LOG_TRIVIAL(trace) << "Read " << read << " bytes";
 
         json::value json = res.body();
 

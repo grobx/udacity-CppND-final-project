@@ -272,7 +272,7 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 
 - [ ] meet all required requirements
 - [ ] meet all addressed requirements
-- [ ] add debugging output (maybe)
+- [x] add debug logs
 - [ ] improve exception handling
 - [ ] check that you can build and run this app on Arch Linux and Windows
 
