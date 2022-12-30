@@ -47,7 +47,7 @@ private:
     Glib::ustring m_markup;
 
 public:
-    void render_dict_result (dict::result const& res) {
+    void set_result (dict::result const& res) {
         std::ostringstream oss;
         oss << res;
         m_markup = oss.str();
@@ -171,7 +171,7 @@ private:
                 auto result_view = static_cast<ResultView*>(page->get_child());
                 page->set_title(term);
 
-                result_view->render_dict_result(result);
+                result_view->set_result(result);
                 m_search.set_text("");
             } catch (dict::suggestions const& suggestions) {
                 m_search.set_suggestions(suggestions);
