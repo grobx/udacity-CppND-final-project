@@ -9,7 +9,7 @@ find_package(PkgConfig)
 pkg_check_modules(gtkmm REQUIRED IMPORTED_TARGET gtkmm-4.0>=4.6)
 find_package(Threads REQUIRED)
 find_package(OpenSSL 3.0 REQUIRED)
-find_package(Boost 1.80 REQUIRED COMPONENTS system json)
+find_package(Boost 1.80 REQUIRED COMPONENTS system json log)
 
 add_executable(Dictionary
     src/main.cpp
@@ -22,7 +22,7 @@ target_link_libraries(Dictionary
     PRIVATE
     OpenSSL::SSL OpenSSL::Crypto
     Threads::Threads
-    Boost::system Boost::json
+    Boost::system Boost::json Boost::log
     PkgConfig::gtkmm
 )
 
