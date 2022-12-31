@@ -16,33 +16,63 @@
 #include <future>
 #include <thread>
 
+#include <iomanip>
+
 namespace logging = boost::log;
 
 namespace app {
 
 std::ostream& operator<< (std::ostream& out, dict::sense const& s) {
-    out << "      sense here";
-    return out;
-}
+    Glib::ustring text = s.get_text().c_str();
 
-std::ostream& operator<< (std::ostream& out, dict::def const& d) {
-    out << "    Def:\n";
-    for (auto& sense : d.senses())
-        out << "    " << sense << "\n";
+    auto regexes = {
+        Glib::Regex::create("\\{bc\\}"),
+        Glib::Regex::create("\\{sx\\|(.+)\\|\\|\\}")
+    };
+
+    auto replaces = {
+        Glib::UStringView("<b><tt> : </tt></b>"),
+        Glib::UStringView("SEE \\1")
+    };
+
+    decltype(regexes)::const_iterator regex = regexes.begin();
+    decltype(replaces)::const_iterator replace = replaces.begin();
+
+    while (regex != regexes.end() && replace != replaces.end()) {
+        BOOST_LOG_TRIVIAL(trace)
+                << "Does <" << text << "> "
+                << " match /" << (*regex)->get_pattern() << "/? "
+                << (*regex)->match_all(text);
+
+        text = (*regex)->replace(text.c_str(), text.length(), 0, *replace);
+
+        BOOST_LOG_TRIVIAL(trace)
+                << "After replace: " << text;
+
+        ++regex;
+        ++replace;
+    }
+
+    out << "<b><tt>"
+        << std::setfill(' ') << std::setw(8)
+        << (s.get_sn().has_value() ? s.get_sn().value().get().c_str() : "")
+        << "</tt></b>"
+        << text.c_str() << " "
+        << "(" << s.get_type() << ")";
+
     return out;
 }
 
 std::ostream& operator<< (std::ostream& out, dict::entry const& e) {
-    out << "  <i>Entry</i>:" << "\n";
-    if (e.definitions()) for (auto& def : *e.definitions())
-        out << def << "\n";
+    for (auto& sense : e.senses())
+        out << sense << "\n";
     return out;
 }
 
 std::ostream& operator<< (std::ostream& out, dict::result const& r) {
     for (auto& entry : r.entries())
-        out << "<b><span foreground=\"red\" size=\"large\">Result</span></b>:\n"
-            << entry;
+        out << "\n" << entry;
+
     return out;
 }
 
@@ -51,11 +81,27 @@ private:
     Glib::ustring m_markup;
 
 public:
-    void set_result (dict::result const& res) {
+    ResultView () {
+        set_margin_start(42);
+        set_margin_end(42);
+        set_wrap();
+        set_wrap_mode(Pango::WrapMode::WORD);
+        get_layout()->set_alignment(Pango::Alignment::RIGHT);
+    }
+
+    void set_result (std::shared_ptr<dict::result> result) {
         std::ostringstream oss;
-        oss << res;
+        oss << *result;
         m_markup = oss.str();
         set_markup(m_markup);
+
+        BOOST_LOG_TRIVIAL(trace)
+                << "Pango markup is\n"
+                << m_markup;
+
+        BOOST_LOG_TRIVIAL(trace)
+                << "Shared ptr of result use count: "
+                << result.use_count();
     }
 };
 
@@ -170,15 +216,21 @@ private:
         BOOST_LOG_TRIVIAL(trace)
                 << "Starting search for term <" << term << ">";
 
-        std::promise<dict::result> prm;
-        std::future<dict::result> ftr = prm.get_future();
-        std::thread([this, term](std::promise<dict::result>&& prm){
+        std::promise<std::shared_ptr<dict::result>> prm;
+        std::future<std::shared_ptr<dict::result>> ftr = prm.get_future();
+        std::thread([this, term](std::promise<std::shared_ptr<dict::result>>&& prm){
             BOOST_LOG_TRIVIAL(trace)
                     << "Search for term <" << term << "> started";
             try {
-                dict::result result = m_api.request(term);
                 BOOST_LOG_TRIVIAL(trace)
                         << "Search for term <" << term << "> finished";
+
+                auto result = m_api.request(term);
+
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Shared ptr of result use count: "
+                        << result.use_count();
+
                 prm.set_value(result);
             } catch (...) {
                 BOOST_LOG_TRIVIAL(trace)
@@ -196,6 +248,9 @@ private:
             try {
                 auto result = ftr.get();
 
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Shared ptr of result use count: "
+                        << result.use_count();
                 auto* widget = m_stack.get_child_by_name("page");
                 if (widget != nullptr)
                     m_stack.remove(*widget);

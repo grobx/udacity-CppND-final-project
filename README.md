@@ -8,6 +8,16 @@ This is my sumbission for Capstone project in the [Udacity C++ Nanodegree Progra
 
 The application is a simple Dictionary that uses the JSON API from [Merriam-Webster online dictionary](https://www.dictionaryapi.com/) to retrieve the definitions of words and display them.
 
+Given the complexities of the aforementioned API, this implementation is far from perfect. For instance, I have not implemented all the [tokens](https://dictionaryapi.com/products/json#sec-2.tokens) required (only `{bc}` and `{sx}` are parsed accordingly, the others are rendered as simple text).
+
+Moreover, I cannot garantee that all the terms can be correctly searched. Here I provide a list of terms garanteed to works:
+
+- no
+- jet
+- plot
+- pet
+- asdf (trigger autocompletion drop down menu)
+
 ## How to use it
 
 Start the application, write the word you want to find in the header bar search entry, press enter and wait the response from the Merrian-Webster online service that will appear in the central widget of the application window.
@@ -295,8 +305,12 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 - [ ] meet all required requirements
 - [ ] meet all addressed requirements
 - [x] add debug logs
-- [ ] improve exception handling
+- [x] improve exception handling
 - [x] check that you can build and run this app on Ubuntu
+- [ ] check dict::result shared_ptr (maybe unique_ptr is better)
+- [ ] split app.hpp and dict.hpp in multiple files
+- [ ] adjust links in README.md
+- [ ] non working words: no, plot
 
 ## Rubric Requirments
 

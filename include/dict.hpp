@@ -32,111 +32,166 @@ namespace ip = asio::ip;
 
 using tcp = ip::tcp;
 
-void throw_invalid_kind(std::string const& expected, json::kind actual) {
-    std::ostringstream oss;
-    auto kind_str = json::to_string(actual);
-    oss << "Invalid result value [expected:" << expected << " was:" << kind_str << "]";
-    throw std::runtime_error(oss.str());
-}
-
 class sense {
+public:
+    enum class type {
+        noun,
+        verb,
+        sls
+    };
+
 private:
     json::object const& m_sense;
+    type const m_type;
+    std::optional<std::reference_wrapper<const json::string>> m_sn;
+    json::string const& m_text;
 
 public:
-    sense (json::value const& sense):
-        m_sense(sense.as_object())
+    sense (json::value const& sense, type const sense_type):
+        m_sense(sense.as_object()),
+        m_type(sense_type),
+        m_sn(find_sn()),
+        m_text(find_text())
     {}
-};
 
-class def {
-private:
-    json::object const& m_def;
-    std::vector<sense> m_senses;
-
-public:
-    def (json::value const& def):
-        m_def(def.as_object())
-    {
-        auto sseq = m_def.at("sseq").as_array();
-        for (auto& s1 : sseq) {
-            for (auto& s2 : s1.as_array()) {
-                auto& obj = s2.as_array();
-                if (obj.at(0) != "sense") return;
-                m_senses.emplace_back(obj.at(1));
-            }
+    const char* get_type () const {
+        switch (m_type) {
+        case type::noun:
+            return "noun";
+        case type::verb:
+            return "verb";
+        case type::sls:
+            return "sls";
         }
     }
 
-    auto& senses () const {
-        return m_senses;
+    std::optional<std::reference_wrapper<const json::string>> get_sn () const {
+        return m_sn;
+    }
+
+    json::string const& get_text () const {
+        return m_text;
+    }
+
+private:
+    std::optional<std::reference_wrapper<const json::string>> find_sn () {
+        if (m_sense.contains("sn"))
+            return m_sense.at("sn").as_string();
+        else
+            return std::nullopt;
+    }
+
+    json::string const& find_text () {
+        auto& dt_a = m_sense.at("dt").as_array();
+        auto val = std::find_if(dt_a.begin(), dt_a.end(), [](json::value const& v) {
+                return v.as_array().at(0).as_string().compare("text") == 0;
+        });
+        return val->as_array().at(1).as_string();
     }
 };
 
 class entry {
 private:
     json::object const& m_entry;
-    std::optional<std::vector<def>> m_def;
+    std::vector<sense> m_senses;
 
 public:
     entry (json::value const& entry):
         m_entry(entry.as_object())
     {
-        }
+        json::array const& defs = m_entry.at("def").as_array();
 
-        json::object const& entry_obj = entry.get_object();
-        if (!entry_obj.contains("def")) return;
+        for (auto& def : defs)
+            parse_def (def.as_object());
 
-        if (!entry_obj.at("def").is_array()) {
-            throw_invalid_kind("array", entry_obj.at("def").kind());
-        }
-
-        json::array const& defs = entry_obj.at("def").get_array();
-
+        BOOST_LOG_TRIVIAL(trace)
+                << "Costructed an entry with "
+                << defs.size() << " definitions and "
+                << m_senses.size() << " senses";
     }
 
-
-    auto& definitions () const {
-        return m_def;
+    auto& senses () const {
+        return m_senses;
     }
 
-};
+private:
+    void parse_def (json::object const& def) {
+        sense::type sense_type;
 
-class suggestions : public std::exception, public std::vector<std::string> {
-public:
-    suggestions (json::value const& suggestions) {
-        for (auto& s : suggestions.get_array())
-            emplace_back(s.get_string());
+        if (auto* vd = def.if_contains("vd")) {
+            sense_type = sense::type::verb;
+
+            BOOST_LOG_TRIVIAL(trace)
+                    << "Found verb divider "
+                    << vd->as_string();
+        } else if (auto* sls = def.if_contains("sls")) {
+            sense_type = sense::type::sls;
+
+            BOOST_LOG_TRIVIAL(trace)
+                    << "Found sls:\n"
+                    << sls;
+        } else {
+            sense_type = sense::type::noun;
+
+            BOOST_LOG_TRIVIAL(trace)
+                    << "It should be a noun";
+        }
+
+        auto& sseq = def.at("sseq");
+
+        for (auto& senses : sseq.as_array())
+            populate_senses (senses, sense_type);
+    }
+
+    void populate_senses (json::value const& senses, sense::type sense_type) {
+        for (auto& sense : senses.as_array()) {
+            auto& s2a = sense.as_array();
+            auto& s2a0 = s2a.at(0).as_string();
+            auto& s2a1 = s2a.at(1);
+            if (s2a0.compare("sense") == 0) {
+                BOOST_LOG_TRIVIAL(trace)
+                        << "got a sense";
+
+                m_senses.emplace_back(s2a1, sense_type);
+            } else if (s2a0.compare("pseq") == 0) {
+                BOOST_LOG_TRIVIAL(trace)
+                        << "got a pseq (an array of senses)";
+
+                populate_senses (s2a1, sense_type);
+            }
+        }
     }
 };
 
 class result {
 private:
-    json::array const& m_result;
+    const json::value m_result;
     std::vector<entry> m_entries;
 
 public:
-    result (json::value const& result):
-        m_result(result.as_array())
+    result (json::value const&& result):
+        m_result(std::move(result))
     {
-        if (!result.is_array()) {
-            throw_invalid_kind("array", result.kind());
-        }
+        for (auto& e : m_result.as_array())
+            m_entries.emplace_back(e);
 
-        json::array const& entries = result.get_array();
-
-        if (entries.empty()) return;
-
-        if (entries[0].is_object()) {
-            for (auto& e : entries)
-                m_entries.emplace_back(e);
-        } else if (entries[0].is_string()){
-            throw suggestions(entries);
-        }
+        BOOST_LOG_TRIVIAL(trace)
+                << "Costructed a result with "
+                << m_result.as_array().size()
+                << " entries";
     }
 
     auto& entries () const {
         return m_entries;
+    }
+};
+
+class suggestions : public std::exception, public std::vector<std::string> {
+public:
+    suggestions (json::value const& suggestions)
+    {
+        for (auto& s : suggestions.as_array())
+            emplace_back(s.as_string());
     }
 };
 
@@ -216,11 +271,16 @@ public:
 
         BOOST_LOG_TRIVIAL(trace) << "Read " << read << " bytes";
 
-        json::value json = res.body();
+        json::value& json = res.body();
+
+        // if the result is an array of strings, throws suggestions
+
+        if (json.as_array().at(0).is_string())
+            throw suggestions(json);
 
         // return the result
 
-        return result(json);
+        return std::make_shared<result>(std::move(json));
     }
 };
 
