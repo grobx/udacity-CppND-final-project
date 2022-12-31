@@ -10,7 +10,7 @@ The application is a simple Dictionary that uses the JSON API from [Merriam-Webs
 
 Given the complexities of the aforementioned API, this implementation is far from perfect. For instance, I have not implemented all the [tokens](https://dictionaryapi.com/products/json#sec-2.tokens) required (only `{bc}` and `{sx}` are parsed accordingly, the others are rendered as simple text).
 
-Moreover, I cannot garantee that all the terms can be correctly searched. Here I provide a list of terms garanteed to works:
+Moreover, I cannot garantee that all the terms can be correctly searched. Here I provide a list of terms garanteed to works (feel free to open an issue if you found a bug):
 
 - no
 - jet
@@ -39,7 +39,6 @@ And the following output stream operators:
 
 - std::ostream& operator<< (std::ostream& out, dict::result const& r)
 - std::ostream& operator<< (std::ostream& out, dict::entry const& e) 
-- std::ostream& operator<< (std::ostream& out, dict::def const& d)
 - std::ostream& operator<< (std::ostream& out, dict::sense const& s)
 
 The classes are used to create the user interface, while the stream operators produces the "pango markup" used to render the `ResultView` (ie: a `Gtk::Label` able to render "pango markup").
@@ -57,7 +56,6 @@ The `shutdown` member function ask the `Gio::Application` to `quit` so that ever
 #### class Layout : public Gtk::Box
 
 The `Layout` is a vertical `Gtk::Box` that contains an `Gtk::HeaderBar` on the head, an expanded `Gtk::Stack` with a `Gtk::ScrolledWindow` that forms the central widget where the `ResultView` will be rendered, and a `Gtk::Statusbar` on the bottom.
-
 
 ##### Layout (Gtk::Window& window)
 
@@ -101,14 +99,15 @@ This file define the namespace `dict` with the following classes:
 - suggestions : public std::exception, public std::vector\<std::string\>
 - result
 - entry
-- def
 - sense
 
 The `api` class is used to send requests to the Merrian-Webster online service. You can construct an instance of this class by calling `api (std::string api_key)`.
 
 This class contains a single member function `result request (std::string word)` that given a `word` either return a `result` object or throws a `suggestions` exception.
 
-You can construct one object of the other classes (`result`, `suggestions`, `entry`, `def` and `sens`) by passing a `json::value` by reference that contains a valid structure for that kind of object.
+In order to construct a `result` you need to pass a `json::value` object using move semantics so that the json data will be moved into `result`.
+
+You can construct one object of the other classes (`suggestions`, `result`, `entry` and `sense`) by passing a `json::value` by reference that contains a valid structure for that kind of object. The `sense` object also expect you to pass a `sense::type` enumerator class instance.
 
 ### include/json_body.hpp
 
@@ -125,6 +124,8 @@ This file was taken from Boost json library example and is used to get the body 
 * Gtkmm >= 4.6
 
 Follow the instructions for your OS below in order to fulfill dependencies for building. Only Ubuntu 22.10, Ubuntu 22.04.1 LTS and Arch Linux are supported.
+
+**Note** The procedure for building on Ubuntu 22.10 is shorter than Ubuntu 22.04.1 LTS; I advise you to use Ubuntu 22.10 to shorten the time needed to build.
 
 ### Ubuntu Linux 22.10
 
@@ -303,8 +304,8 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 
 ### Required
 
-- [ ] meet all required requirements
-- [ ] meet all addressed requirements
+- [x] meet all required requirements
+- [x] meet all addressed requirements
 
 ### Working
 
@@ -313,12 +314,13 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 - [x] check that you can build and run this app on Ubuntu
 - [ ] check dict::result shared_ptr (maybe unique_ptr is better)
 - [ ] non working words: no, plot
-- [ ] split app.hpp and dict.hpp in multiple files
+- [ ] split app.hpp and dict.hpp in multiple files?
 
 ### Before submitting
 
 - [ ] adjust links in README.md
-- [ ] switch log trace off before submitting
+- [ ] switch log trace off
+- [ ] remove this TODO section
 
 ## Rubric Requirments
 
@@ -329,7 +331,7 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 - [x] The README.md is included with the project and has instructions for building/running the project.
 - [x] If any additional libraries are needed to run the project, these are indicated with cross-platform installation instructions.
 - [x] The README describes the project you have built.
-- [ ] The README indicates which rubric points are addressed. The README also indicates where in the code (i.e. files and line numbers) that the rubric points are addressed.
+- [x] The README indicates which rubric points are addressed. The README also indicates where in the code (i.e. files and line numbers) that the rubric points are addressed.
 - [x] The README also indicates the file and class structure, along with the expected behavior or output of the program.
 
 #### Compiling and Testing
@@ -345,19 +347,35 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 
 #### Object Oriented Programming
 
-- [ ] The project code is organized into classes with class attributes to hold the data, and class methods to perform tasks.
-  - [dict::sense](include/dict.hpp#L42)
-  - [dict::def](include/dict.hpp#L52)
-  - [ ] TODO: add all the others from dict.hpp and app.hpp
+- [x] The project code is organized into classes with class attributes to hold the data, and class methods to perform tasks.
+    - [dict::api](include/dict.hpp#L198)
+    - [dict::suggestions](include/dict.hpp#L189)
+    - [dict::result](include/dict.hpp#L166)
+    - [dict::entry](include/dict.hpp#L93)
+    - [dict::sense](include/dict.hpp#L35)
+    - [app::Window](include/app.hpp#L306)
+    - [app::Layout](include/app.hpp#L156)
+    - [app::Search](include/app.hpp#L118)
+    - [app::ResultView](include/app.hpp#L79)
 
-- [?] Appropriate data and functions are grouped into classes. Member data that is subject to an invariant is hidden from the user. State is accessed via member functions.
+- [x] Appropriate data and functions are grouped into classes. Member data that is subject to an invariant is hidden from the user. State is accessed via member functions.
+    - [dict::api](include/dict.hpp#L198)
+    - [dict::suggestions](include/dict.hpp#L189)
+    - [dict::result](include/dict.hpp#L166)
+    - [dict::entry](include/dict.hpp#L93)
+    - [dict::sense](include/dict.hpp#L35)
+    - [app::Window](include/app.hpp#L306)
+    - [app::Layout](include/app.hpp#L156)
+    - [app::Search](include/app.hpp#L118)
+    - [app::ResultView](include/app.hpp#L79)
 
 #### Memory Management
 
-- [ ] At least two variables are defined as references, or two functions use pass-by-reference in the project code.
-  - 
+- [x] At least two variables are defined as references, or two functions use pass-by-reference in the project code.
+    - [dict::entry](include/dict.hpp#L99)
+    - [dict::sense](include/dict.hpp#L44)
 
 #### Concurrency
 
-- [ ] A promise and future is used to pass data from a worker thread to a parent thread in the project code.
-  - 
+- [x] A promise and future is used to pass data from a worker thread to a parent thread in the project code.
+    - in [app::Layout::define](include/app.hpp#L229) the worker thread that connects to the Merriam-Webster dictionary to lookup for the term is started by passing a promise to it; once the request is done, the worker thread will pass the result to the parent thread using `promise::set_value` or `promise::set_exception`
