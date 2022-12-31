@@ -302,15 +302,24 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 
 ## TODO
 
+### Required
+
 - [ ] meet all required requirements
 - [ ] meet all addressed requirements
+
+### Working
+
 - [x] add debug logs
 - [x] improve exception handling
 - [x] check that you can build and run this app on Ubuntu
 - [ ] check dict::result shared_ptr (maybe unique_ptr is better)
-- [ ] split app.hpp and dict.hpp in multiple files
-- [ ] adjust links in README.md
 - [ ] non working words: no, plot
+- [ ] split app.hpp and dict.hpp in multiple files
+
+### Before submitting
+
+- [ ] adjust links in README.md
+- [ ] switch log trace off before submitting
 
 ## Rubric Requirments
 

@@ -33,7 +33,7 @@ case $os in
         tar xf boost_1_80_0.tar.gz
         cd boost_1_80_0/
         ./bootstrap.sh --prefix=/usr/local
-        sudo ./b2 --with-system --with-json -j$(nproc) install
+        sudo ./b2 --with-system --with-json --with-log -j$(nproc) install
         cd ..
 
         ;;
@@ -59,7 +59,7 @@ case $os in
         tar xf boost_1_80_0.tar.gz
         cd boost_1_80_0/
         ./bootstrap.sh --prefix=/usr/local
-        sudo ./b2 --with-system --with-json -j$(nproc) install
+        sudo ./b2 --with-system --with-json --with-log -j$(nproc) install
         cd ..
 
         # 4. Build and install sigc++ 3.2
