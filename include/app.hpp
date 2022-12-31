@@ -105,6 +105,16 @@ public:
     }
 };
 
+#if !GTK_CHECK_VERSION(4,8,0)
+static const Glib::SignalProxyInfo
+Search_signal_activate_info =
+{
+  "activate",
+  (GCallback) &Glib::SignalProxyNormal::slot0_void_callback,
+  (GCallback) &Glib::SignalProxyNormal::slot0_void_callback
+};
+#endif
+
 class Search : public Gtk::SearchEntry {
 private:
     Glib::RefPtr<Gio::Menu> m_menu;
@@ -125,6 +135,14 @@ public:
     auto signal_term_selected () {
         return m_action->signal_activate();
     }
+
+#if !GTK_CHECK_VERSION(4,8,0)
+    Glib::SignalProxy<void()> signal_activate()
+    {
+      return Glib::SignalProxy<void()>
+              (this, &Search_signal_activate_info);
+    }
+#endif
 
     void set_suggestions (dict::suggestions const& suggestions) {
         m_menu->remove_all();

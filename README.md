@@ -124,8 +124,7 @@ This file was taken from Boost json library example and is used to get the body 
 * Boost >= 1.80
 * Gtkmm >= 4.6
 
-Follow the instructions for your OS below in order to fulfill dependencies for building.
-
+Follow the instructions for your OS below in order to fulfill dependencies for building. Only Ubuntu 22.10, Ubuntu 22.04.1 LTS and Arch Linux are supported.
 
 ### Ubuntu Linux 22.10
 
@@ -149,7 +148,7 @@ wget -O boost_1_80_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1
 tar xf boost_1_80_0.tar.gz
 cd boost_1_80_0/
 ./bootstrap.sh --prefix=/usr/local
-sudo ./b2 --with-system --with-json -j$(nproc) install
+sudo ./b2 --with-system --with-json --with-log -j$(nproc) install
 cd ..
 ```
 
@@ -178,7 +177,7 @@ wget -O boost_1_80_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1
 tar xf boost_1_80_0.tar.gz
 cd boost_1_80_0/
 ./bootstrap.sh --prefix=/usr/local
-sudo ./b2 --with=all -j$(nproc) install
+sudo ./b2 --with-system --with-json --with-log -j$(nproc) install
 cd ..
 ```
 
