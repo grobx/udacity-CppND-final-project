@@ -334,7 +334,7 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 #### Loops, Functions, I/O
 
 - [x] The project accepts input from a user as part of the necessary operation of the program.
-    - a `Gtk::SearchEntry` (namely [app::Search](app.hpp#L106)) is used by the user to input the term to lookup
+    - a `Gtk::SearchEntry` (namely [app::Search](include/app.hpp#L106)) is used by the user to input the term to lookup
 
 #### Object Oriented Programming
 
@@ -360,4 +360,4 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 - [x] A promise and future is used to pass data from a worker thread to a parent thread in the project code.
     - in [app::Layout::define](include/app.hpp#L265) the worker thread that connects to the Merriam-Webster dictionary to lookup for the term is started by passing a promise to it; once the request is done, the worker thread will pass the result to the parent thread using `promise::set_value` or it will call `promise::set_exception`
 - [x] The project uses at least one smart pointer: unique_ptr, shared_ptr, or weak_ptr. The project does not use raw pointers.
-    - [dict::api::request](include/dict.hpp#L283) return a std::unique_ptr<dict::result> created by mooving the json::value obtained via web API
+    - [dict::api::request](include/dict.hpp#L283) return a std::unique_ptr\<dict::result\> created by mooving the json::value obtained via web API
