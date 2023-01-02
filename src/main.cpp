@@ -14,7 +14,8 @@ int main (int argc, char* argv[])
 {
     logging::core::get()->set_filter
     (
-        logging::trivial::severity >= logging::trivial::severity_level::trace
+        logging::trivial::severity >=
+                logging::trivial::severity_level::error
     );
     const Glib::ustring app_id =
             "dev.roberti.udacity.cppnd.final-project";

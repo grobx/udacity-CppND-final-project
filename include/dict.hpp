@@ -129,7 +129,7 @@ private:
 
             BOOST_LOG_TRIVIAL(trace)
                     << "Found sls:\n"
-                    << sls;
+                    << *sls;
         } else {
             sense_type = sense::type::noun;
 
@@ -149,14 +149,8 @@ private:
             auto& s2a0 = s2a.at(0).as_string();
             auto& s2a1 = s2a.at(1);
             if (s2a0.compare("sense") == 0) {
-                BOOST_LOG_TRIVIAL(trace)
-                        << "got a sense";
-
                 m_senses.emplace_back(s2a1, sense_type);
             } else if (s2a0.compare("pseq") == 0) {
-                BOOST_LOG_TRIVIAL(trace)
-                        << "got a pseq (an array of senses)";
-
                 populate_senses (s2a1, sense_type);
             }
         }
@@ -172,8 +166,14 @@ public:
     result (json::value const&& result):
         m_result(std::move(result))
     {
-        for (auto& e : m_result.as_array())
-            m_entries.emplace_back(e);
+        for (auto& e : m_result.as_array()) {
+            try {
+                m_entries.emplace_back(e);
+            } catch (std::exception& e) {
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Unable to parse an entry";
+            }
+        }
 
         BOOST_LOG_TRIVIAL(trace)
                 << "Costructed a result with "
@@ -280,7 +280,7 @@ public:
 
         // return the result
 
-        return std::make_shared<result>(std::move(json));
+        return std::make_unique<result>(std::move(json));
     }
 };
 

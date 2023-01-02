@@ -16,13 +16,14 @@ Moreover, I cannot garantee that all the terms can be correctly searched. Here I
 - jet
 - plot
 - pet
+- as is
 - asdf (trigger autocompletion drop down menu)
 
 ## How to use it
 
 Start the application, write the word you want to find in the header bar search entry, press enter and wait the response from the Merrian-Webster online service that will appear in the central widget of the application window.
 
-In case a term is not found and the service can provide some suggestions, a drop-down menu is shown, and the user can select the term if it match his/her expectations.
+In case a term is not found and the service can provide some suggestions, a drop-down menu is shown, and the you can select the term if it match your expectations.
 
 ## Organization
 
@@ -63,7 +64,15 @@ To construct a `Layout` you need to pass a `Gtk::Window` that is used to render 
 
 ##### void init_signals ()
 
-The `init_signals` member function is used to setup all the signal handlers that are needed for the application to function as expected. In particular, there are three signals that we are using. The `Layout::realize` signal is attached to a lambda function that will render the message "Application Started!" for 2.5 seconds before deleting it. The `Search::activate` is attached to a lambda function that extract the `term` using `Search::get_text` and call `define(term)` in order to perform the lookup in the dictionary. The `Search::term-selected` signal is attached to a lambda function that receive the `term` as a parameter and call `define(term)`. This last signal is the one that handle the term selection from a suggestion drop-down menu.
+The `init_signals` member function is used to setup all the signal handlers that are needed for the application to function as expected. In particular, there are four signals that we are using.
+
+The `Layout::realize` signal is attached to a lambda function that will render the message "Application Started!" for 2.5 seconds before deleting it.
+
+The `Search::activate` is attached to a lambda function that extract the `term` using `Search::get_text` and call `define(term)` in order to perform the lookup in the dictionary.
+
+The `Search::term-selected` signal is attached to a lambda function that receive the `term` as a parameter and call `define(term)`. This last signal is the one that handle the term selection from a suggestion drop-down menu.
+
+Finally a 'Glib::Dispatcher' is used to render the result from the worker thread. We need this because Gtk render needs to be done in the main thread.
 
 ##### void define (Glib::ustring const& term)
 
@@ -87,6 +96,10 @@ This method is called during a `Layout::define` if the result thread will raise 
 
 #### class ResultView : public Gtk::Label
 
+##### ResultView ()
+
+During construction the `ResultView` will setup all the parameters needed to be rendered correctly as a central widget.
+
 ##### void set_result (dict::result const& res)
 
 This function will render the `res` to a string by using a `std::ostringstream` and set the result as "pango markup" by calling `set_markup` on itself.
@@ -103,7 +116,7 @@ This file define the namespace `dict` with the following classes:
 
 The `api` class is used to send requests to the Merrian-Webster online service. You can construct an instance of this class by calling `api (std::string api_key)`.
 
-This class contains a single member function `result request (std::string word)` that given a `word` either return a `result` object or throws a `suggestions` exception.
+This class contains a single member function `std::unique_ptr<result> request (std::string word)` that given a `word` either return a unique `result` object or throws a `suggestions` exception.
 
 In order to construct a `result` you need to pass a `json::value` object using move semantics so that the json data will be moved into `result`.
 
@@ -300,28 +313,6 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 ./Dictionary
 ```
 
-## TODO
-
-### Required
-
-- [x] meet all required requirements
-- [x] meet all addressed requirements
-
-### Working
-
-- [x] add debug logs
-- [x] improve exception handling
-- [x] check that you can build and run this app on Ubuntu
-- [ ] check dict::result shared_ptr (maybe unique_ptr is better)
-- [ ] non working words: no, plot
-- [ ] split app.hpp and dict.hpp in multiple files?
-
-### Before submitting
-
-- [ ] adjust links in README.md
-- [ ] switch log trace off
-- [ ] remove this TODO section
-
 ## Rubric Requirments
 
 ### Required
@@ -343,39 +334,30 @@ export DICTIONARY_API_KEY="aaa-bbb-ccc"
 #### Loops, Functions, I/O
 
 - [x] The project accepts input from a user as part of the necessary operation of the program.
-  - a `Gtk::SearchEntry` (namely [app::Search](app.hpp#L60)) is used by the user to input the term to lookup
+    - a `Gtk::SearchEntry` (namely [app::Search](app.hpp#L106)) is used by the user to input the term to lookup
 
 #### Object Oriented Programming
 
 - [x] The project code is organized into classes with class attributes to hold the data, and class methods to perform tasks.
     - [dict::api](include/dict.hpp#L198)
     - [dict::suggestions](include/dict.hpp#L189)
-    - [dict::result](include/dict.hpp#L166)
+    - [dict::result](include/dict.hpp#L160)
     - [dict::entry](include/dict.hpp#L93)
     - [dict::sense](include/dict.hpp#L35)
-    - [app::Window](include/app.hpp#L306)
-    - [app::Layout](include/app.hpp#L156)
-    - [app::Search](include/app.hpp#L118)
-    - [app::ResultView](include/app.hpp#L79)
-
-- [x] Appropriate data and functions are grouped into classes. Member data that is subject to an invariant is hidden from the user. State is accessed via member functions.
-    - [dict::api](include/dict.hpp#L198)
-    - [dict::suggestions](include/dict.hpp#L189)
-    - [dict::result](include/dict.hpp#L166)
-    - [dict::entry](include/dict.hpp#L93)
-    - [dict::sense](include/dict.hpp#L35)
-    - [app::Window](include/app.hpp#L306)
-    - [app::Layout](include/app.hpp#L156)
-    - [app::Search](include/app.hpp#L118)
-    - [app::ResultView](include/app.hpp#L79)
+    - [app::Window](include/app.hpp#L290)
+    - [app::Layout](include/app.hpp#L144)
+    - [app::Search](include/app.hpp#L106)
+    - [app::ResultView](include/app.hpp#L71)
 
 #### Memory Management
 
 - [x] At least two variables are defined as references, or two functions use pass-by-reference in the project code.
     - [dict::entry](include/dict.hpp#L99)
-    - [dict::sense](include/dict.hpp#L44)
+    - [dict::sense](include/dict.hpp#L50)
 
 #### Concurrency
 
 - [x] A promise and future is used to pass data from a worker thread to a parent thread in the project code.
-    - in [app::Layout::define](include/app.hpp#L229) the worker thread that connects to the Merriam-Webster dictionary to lookup for the term is started by passing a promise to it; once the request is done, the worker thread will pass the result to the parent thread using `promise::set_value` or `promise::set_exception`
+    - in [app::Layout::define](include/app.hpp#L265) the worker thread that connects to the Merriam-Webster dictionary to lookup for the term is started by passing a promise to it; once the request is done, the worker thread will pass the result to the parent thread using `promise::set_value` or it will call `promise::set_exception`
+- [x] The project uses at least one smart pointer: unique_ptr, shared_ptr, or weak_ptr. The project does not use raw pointers.
+    - [dict::api::request](include/dict.hpp#L283) return a std::unique_ptr<dict::result> created by mooving the json::value obtained via web API

@@ -39,15 +39,7 @@ std::ostream& operator<< (std::ostream& out, dict::sense const& s) {
     decltype(replaces)::const_iterator replace = replaces.begin();
 
     while (regex != regexes.end() && replace != replaces.end()) {
-        BOOST_LOG_TRIVIAL(trace)
-                << "Does <" << text << "> "
-                << " match /" << (*regex)->get_pattern() << "/? "
-                << (*regex)->match_all(text);
-
         text = (*regex)->replace(text.c_str(), text.length(), 0, *replace);
-
-        BOOST_LOG_TRIVIAL(trace)
-                << "After replace: " << text;
 
         ++regex;
         ++replace;
@@ -89,19 +81,15 @@ public:
         get_layout()->set_alignment(Pango::Alignment::RIGHT);
     }
 
-    void set_result (std::shared_ptr<dict::result> result) {
+    void set_result (dict::result const& result) {
         std::ostringstream oss;
-        oss << *result;
+        oss << result;
         m_markup = oss.str();
         set_markup(m_markup);
 
         BOOST_LOG_TRIVIAL(trace)
                 << "Pango markup is\n"
                 << m_markup;
-
-        BOOST_LOG_TRIVIAL(trace)
-                << "Shared ptr of result use count: "
-                << result.use_count();
     }
 };
 
@@ -162,11 +150,16 @@ private:
     Gtk::HeaderBar m_headerbar;
 
     Gtk::Box m_box;
-    Gtk::Stack m_stack;
+    ResultView m_result_view;
     Gtk::ScrolledWindow m_scroll;
 
     Gtk::Statusbar m_status;
     std::unique_ptr<Gtk::MessageDialog> m_error_dialog;
+
+    guint m_req_msg_id;
+    std::optional<std::thread> m_req_thr;
+    std::future<std::unique_ptr<dict::result>> m_req_ftr;
+    Glib::Dispatcher m_req_done;
 
 public:
     Layout (Gtk::Window& window) : Box(Gtk::Orientation::VERTICAL)
@@ -180,8 +173,8 @@ public:
 
         /// CENTRAL WIDGETS
 
-        m_stack.set_expand();
-        m_scroll.set_child(m_stack);
+        m_result_view.set_expand();
+        m_scroll.set_child(m_result_view);
         m_box.set_orientation(Gtk::Orientation::HORIZONTAL);
 
         m_box.append(m_scroll);
@@ -224,61 +217,16 @@ private:
             m_search.set_text(text);
             define(text);
         });
-    }
 
-    void define (Glib::ustring const& term) {
-        if (term.empty()) return;
+        m_req_done.connect([this]{
+            BOOST_LOG_TRIVIAL(trace) << "Search done!";
 
-        auto msg_id = m_status.push("Searching " + term + " ...");
-
-        BOOST_LOG_TRIVIAL(trace)
-                << "Starting search for term <" << term << ">";
-
-        std::promise<std::shared_ptr<dict::result>> prm;
-        std::future<std::shared_ptr<dict::result>> ftr = prm.get_future();
-        std::thread([this, term](std::promise<std::shared_ptr<dict::result>>&& prm){
-            BOOST_LOG_TRIVIAL(trace)
-                    << "Search for term <" << term << "> started";
-            try {
-                BOOST_LOG_TRIVIAL(trace)
-                        << "Search for term <" << term << "> finished";
-
-                auto result = m_api.request(term);
-
-                BOOST_LOG_TRIVIAL(trace)
-                        << "Shared ptr of result use count: "
-                        << result.use_count();
-
-                prm.set_value(result);
-            } catch (...) {
-                BOOST_LOG_TRIVIAL(trace)
-                        << "Search for term <" << term << "> throws";
-                prm.set_exception(std::current_exception());
-            }
-        }, std::move(prm)).detach();
-
-        Glib::signal_timeout().connect([this, msg_id, term, ftr = ftr.share()]{
-            using namespace std::chrono_literals;
-
-            if (ftr.wait_for(1ms) != std::future_status::ready)
-                return true;
+            m_req_thr->join();
+            m_req_thr.reset();
 
             try {
-                auto result = ftr.get();
-
-                BOOST_LOG_TRIVIAL(trace)
-                        << "Shared ptr of result use count: "
-                        << result.use_count();
-                auto* widget = m_stack.get_child_by_name("page");
-                if (widget != nullptr)
-                    m_stack.remove(*widget);
-
-                auto page = m_stack.add(*Gtk::make_managed<ResultView>(), "page");
-                auto result_view = static_cast<ResultView*>(page->get_child());
-                page->set_title(term);
-
-                result_view->set_result(result);
-                m_search.set_text("");
+                auto const& result = m_req_ftr.get();
+                m_result_view.set_result(*result);
             } catch (dict::suggestions const& suggestions) {
                 m_search.set_suggestions(suggestions);
             } catch (std::exception const& e) {
@@ -297,9 +245,45 @@ private:
                 });
             }
 
-            m_status.remove_message(msg_id);
-            return false;
-        }, 1000);
+            m_search.set_sensitive();
+            m_status.remove_message(m_req_msg_id);
+        });
+    }
+
+    void define (Glib::ustring const& term) {
+        if (term.empty()) return;
+
+        m_search.set_sensitive(false);
+
+        m_req_msg_id = m_status.push("Searching " + term + " ...");
+
+        BOOST_LOG_TRIVIAL(trace)
+                << "Starting search for term <" << term << ">";
+
+        std::promise<std::unique_ptr<dict::result>> prm;
+        m_req_ftr = prm.get_future();
+        m_req_thr = std::thread(
+                    [this, term]
+                    (std::promise<std::unique_ptr<dict::result>>&& prm)
+        {
+            BOOST_LOG_TRIVIAL(trace)
+                    << "Search for term <" << term << "> started";
+
+            try {
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Search for term <" << term << "> finished";
+
+                auto result = m_api.request(term);
+
+                prm.set_value(std::move(result));
+            } catch (...) {
+                BOOST_LOG_TRIVIAL(trace)
+                        << "Search for term <" << term << "> throws";
+                prm.set_exception(std::current_exception());
+            }
+
+            m_req_done.emit();
+        }, std::move(prm));
     }
 };
 
